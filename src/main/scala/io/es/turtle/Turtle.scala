@@ -7,7 +7,13 @@ case class Turtle(id: String, pos: Position, dir: Direction)
 
 object Turtle {
 
-  sealed trait TurtleEvent { def id: String }
+  sealed trait TurtleCmd
+  case class CreateCmd(pos: Position, dir: Direction) extends TurtleCmd
+  case class WalkRightCmd(dist: Int) extends TurtleCmd
+  case class WalkLeftCmd(dist: Int) extends TurtleCmd
+  case class WalkCmd(dist: Int) extends TurtleCmd
+
+  sealed trait TurtleEvent
   case class Create(id: String, pos: Position, dir: Direction) extends TurtleEvent
   case class Turn(id: String, rot: Rotation) extends TurtleEvent
   case class Walk(id: String, dist: Int) extends TurtleEvent
@@ -34,7 +40,14 @@ object Turtle {
     } yield ()
   }
 
-  implicit val turtleHandler: EventHandler[Turtle, TurtleEvent] = EventHandler[Turtle, TurtleEvent] {
+  def walkLeft(dist: Int): UpdateSource[Turtle, TurtleEvent, Unit] = {
+    for {
+      _ <- source(Turtle.turn(ToLeft))
+      _ <- source(Turtle.walk(dist))
+    } yield ()
+  }
+
+  implicit val turtleEventHandler: EventHandler[Turtle, TurtleEvent] = EventHandler[Turtle, TurtleEvent] {
     case (None, Create(id, pos, dir)) => Turtle(id, pos, dir)
     case (Some(t), Turn(id, rot)) if id == t.id =>
       t.copy(dir = t.dir.rotate(rot))

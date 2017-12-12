@@ -23,7 +23,9 @@ object Sourced {
     } yield ())
   }
 
-  case class CreateSource[STATE, EVENT, A](init: Result[(STATE, EVENT)], next: UpdateSource[STATE, EVENT, A]) {
+  sealed trait Source[STATE, EVENT, A]
+
+  case class CreateSource[STATE, EVENT, A](init: Result[(STATE, EVENT)], next: UpdateSource[STATE, EVENT, A]) extends Source[STATE, EVENT, A] {
     val values: Eval[Result[(List[EVENT], STATE, A)]] = Eval.later {
       init.flatMap { case (state, event) =>
           val r = next.sourced.run((), state)
@@ -42,7 +44,7 @@ object Sourced {
     }
   }
 
-  case class UpdateSource[STATE, EVENT, A](sourced: Sourcing[STATE, EVENT, A]) {
+  case class UpdateSource[STATE, EVENT, A](sourced: Sourcing[STATE, EVENT, A]) extends Source[STATE, EVENT, A] {
 
     def andThen[B](f: Sourcing[STATE, EVENT, B]): UpdateSource[STATE, EVENT, B] = {
       UpdateSource(sourced.flatMap(_ => f))

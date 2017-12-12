@@ -31,4 +31,41 @@ object Main extends App {
   }
 
   journal.write(java.util.UUID.randomUUID(), 0L, turtle.events.right.get).unsafeRunSync()
+
+  /*
+    trait Command {
+      type S: Aggregate
+      val aggregateId: Option[UUID]
+    }
+
+    val journal = {
+      def hydrate[S](id: UUID): IO[Option[S]]
+      def persist(event: E): IO[Unit]
+    }
+
+    val handlers: List[CommandHandler] = ???
+
+    handle[Cmd](cmd: Cmd) = {
+      val optState = cmd.aggregateId.flatMap(hydrate)
+      handlers.find(_isDefinedAt((cmd, optState))) match {
+        case Some(h) =>
+          val result = h((cmd, optState)).runUnsafeSync
+
+        case None =>
+      }
+    }
+
+    persist {
+      // security
+      // log
+      // PartialFunction[Cmd, IO[CreatedSource[State, Event, Unit]]]
+
+      CommandHandler extends PartialFunction[(Cmd, Option[S]), CreatedSource[S, E, Unit]] {
+        case FooCmd => ???
+      }
+
+
+    }
+
+   */
 }
