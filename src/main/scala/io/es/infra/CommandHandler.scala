@@ -8,7 +8,7 @@ import cats.implicits._
 
 case class CommandHandler[C, S, E](before: Reader[C, IO[Unit]], handler: Reader[C, Source[S, E, Unit]], after: Reader[(C, CommandResult), IO[Unit]]) {
 
-  def runCommand[P](cmd: C, journal: EventJournal[IO, P])(
+  def runCommand[P](cmd: C, journal: EventJournal[P])(
     implicit e: Event[E, P],
     aggregate: Aggregate[S],
     command: Command[C],
@@ -21,8 +21,8 @@ case class CommandHandler[C, S, E](before: Reader[C, IO[Unit]], handler: Reader[
           case Right((events, state, _)) =>
             for {
               _ <- journal.write(aggregate.aggregateId(state), 0, events)
-            } yield CmdOK(aggregate.aggregateId(state), state, events)
-          case Left(message) => IO.pure(CmdNOK(message))
+            } yield SuccessCommand(aggregate.aggregateId(state), state, events)
+          case Left(message) => IO.pure(FailedCommand(message))
         }
 
       case us@UpdateSource(_) =>
@@ -34,12 +34,12 @@ case class CommandHandler[C, S, E](before: Reader[C, IO[Unit]], handler: Reader[
                 case Right((events, newState, _)) =>
                   for {
                     _ <- journal.write(aggregate.aggregateId(newState), version, events)
-                  } yield CmdOK(aggregate.aggregateId(newState), newState, events)
-                case Left(message) => IO.pure(CmdNOK(message))
+                  } yield SuccessCommand(aggregate.aggregateId(newState), newState, events)
+                case Left(message) => IO.pure(FailedCommand(message))
               }
-            case None => IO.pure(CmdNOK("not.found"))
+            case None => IO.pure(FailedCommand("not.found"))
           }
-          case None => IO.pure(CmdNOK("not.found"))
+          case None => IO.pure(FailedCommand("not.found"))
         }
     }
 

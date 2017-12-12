@@ -7,7 +7,7 @@ import io.es.UUID
 import io.es.infra.data.Event
 import io.es.infra.{ConcurrencyEventException, EventHandler, EventJournal}
 
-class SqlEventJournal(xa: Transactor[IO]) extends EventJournal[IO, Json] with DoobieMetaInstances {
+class SqlEventJournal(xa: Transactor[IO]) extends EventJournal[Json] with DoobieMetaInstances {
 
   import cats.effect.IO
   import cats.implicits._
