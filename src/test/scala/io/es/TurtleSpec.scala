@@ -2,8 +2,8 @@ package io.es
 
 import org.scalatest.{FlatSpec, Matchers}
 
-import io.es.turtle._
-import io.es.turtle.Turtle.{Create, Turn, TurtleEvent, Walk}
+import io.es.domain.turtle._
+import io.es.domain.turtle.Turtle.{Create, Turn, TurtleEvent, Walk}
 
 class TurtleSpec extends FlatSpec with Matchers {
   import io.es.infra.Sourced._

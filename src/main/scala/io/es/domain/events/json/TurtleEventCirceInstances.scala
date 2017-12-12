@@ -1,10 +1,10 @@
-package io.es.store.sql.events
+package io.es.domain.events.json
 
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, Json}
-import io.es.turtle.Turtle.{Create, Turn, TurtleEvent, Walk}
-import io.es.turtle._
+import io.es.domain.turtle.Turtle.{Create, Turn, TurtleEvent, Walk}
+import io.es.domain.turtle._
 
 trait TurtleEventCirceInstances {
 

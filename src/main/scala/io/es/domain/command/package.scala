@@ -1,7 +1,7 @@
-package io.es.store.sql
+package io.es.domain
 
 import io.es.infra.data.Command
-import io.es.turtle.Turtle.{CreateCmd, TurtleCmd, WalkCmd, WalkLeftCmd, WalkRightCmd}
+import io.es.domain.turtle.Turtle.{CreateCmd, TurtleCmd, WalkCmd, WalkLeftCmd, WalkRightCmd}
 
 package object command {
 

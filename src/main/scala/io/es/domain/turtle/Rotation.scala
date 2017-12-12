@@ -1,4 +1,4 @@
-package io.es.turtle
+package io.es.domain.turtle
 
 sealed trait Rotation
 case object ToLeft extends Rotation

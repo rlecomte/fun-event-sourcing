@@ -1,8 +1,7 @@
-package io.es
+package io.es.domain.turtle
 
 import cats.effect.IO
 import io.es.infra.CommandHandler
-import io.es.turtle.Turtle
 
 object TurtleCommandHandler {
 

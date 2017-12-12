@@ -1,17 +1,18 @@
 package io.es
 
+import cats.effect.IO
 import doobie.hikari.HikariTransactor
+import io.es.domain.turtle.Turtle.{CreateCmd, TurtleCmd, WalkCmd, WalkLeftCmd, WalkRightCmd}
+import io.es.domain.turtle.{North, Position, TurtleCommandHandler}
 import io.es.infra.data.CommandResult
 import io.es.store.sql.SqlEventJournal
-import io.es.turtle.{North, Position}
-import io.es.turtle.Turtle.{CreateCmd, TurtleCmd, WalkCmd, WalkLeftCmd, WalkRightCmd}
 
 object Main extends App {
 
-  import cats.effect.IO
-  import io.es.store.sql.events._
-  import io.es.store.sql.aggregate._
-  import io.es.store.sql.command._
+  import io.es.domain._
+  import aggregate._
+  import command._
+  import events.json._
 
   object infra {
     val xa = HikariTransactor[IO](

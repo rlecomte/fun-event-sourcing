@@ -1,4 +1,4 @@
-package io.es.turtle
+package io.es.domain.turtle
 
 case class Position(x: Int, y: Int) {
   def move(dir: Direction, distance: Int): Position =

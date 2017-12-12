@@ -1,7 +1,7 @@
-package io.es.store.sql
+package io.es.domain
 
 import io.es.infra.data.Aggregate
-import io.es.turtle.Turtle
+import io.es.domain.turtle.Turtle
 
 package object aggregate {
 
