@@ -8,5 +8,5 @@ abstract class EventJournal[F[_], P] {
     (implicit event: Event[EVENT, P]): F[Unit]
 
   def hydrate[STATE, EVENT](aggregateId: UUID)
-    (implicit handler: EventHandler[STATE, EVENT], event: Event[EVENT, P]): F[Option[STATE]]
+    (implicit handler: EventHandler[STATE, EVENT], event: Event[EVENT, P]): F[Option[(STATE, Long)]]
 }

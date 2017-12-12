@@ -25,17 +25,17 @@ class SqlEventJournal(xa: Transactor[IO]) extends EventJournal[IO, Json] with Do
 
 
   override def hydrate[STATE, EVENT](aggregateId: UUID)
-    (implicit handler: EventHandler[STATE, EVENT], event: Event[EVENT, Json]): IO[Option[STATE]] = {
-    val sql: Query0[Json] = sql"""
-       SELECT data
+    (implicit handler: EventHandler[STATE, EVENT], event: Event[EVENT, Json]): IO[Option[(STATE, Long)]] = {
+    val sql: Query0[(Json, Long)] = sql"""
+       SELECT data, version
        FROM events
-       WHERE aggregateId=$aggregateId
+       WHERE aggregate_id=$aggregateId
        ORDER BY version
-    """.query[Json]
+    """.query[(Json, Long)]
 
     sql.process
-      .map(event.fromStore)
-      .fold[Option[STATE]](None) { case (s, e) => Some(handler(s, e)) }
+      .map { case (data, version) => (event.fromStore(data), version) }
+      .fold[Option[(STATE, Long)]](None) { case (s, (e, v)) => Some((handler(s.map(_._1), e), v)) }
       .list
       .transact(xa)
       .map(_.headOption.flatten)

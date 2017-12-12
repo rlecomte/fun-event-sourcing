@@ -1,26 +1,27 @@
 package io.es.turtle
 
+import io.es.UUID
 import io.es.infra.EventHandler
 import io.es.infra.Sourced.{UpdateSource, source}
 
-case class Turtle(id: String, pos: Position, dir: Direction)
+case class Turtle(id: UUID, pos: Position, dir: Direction)
 
 object Turtle {
 
   sealed trait TurtleCmd
   case class CreateCmd(pos: Position, dir: Direction) extends TurtleCmd
-  case class WalkRightCmd(dist: Int) extends TurtleCmd
-  case class WalkLeftCmd(dist: Int) extends TurtleCmd
-  case class WalkCmd(dist: Int) extends TurtleCmd
+  case class WalkRightCmd(id: UUID, dist: Int) extends TurtleCmd
+  case class WalkLeftCmd(id: UUID, dist: Int) extends TurtleCmd
+  case class WalkCmd(id: UUID, dist: Int) extends TurtleCmd
 
   sealed trait TurtleEvent
-  case class Create(id: String, pos: Position, dir: Direction) extends TurtleEvent
-  case class Turn(id: String, rot: Rotation) extends TurtleEvent
-  case class Walk(id: String, dist: Int) extends TurtleEvent
+  case class Create(id: UUID, pos: Position, dir: Direction) extends TurtleEvent
+  case class Turn(id: UUID, rot: Rotation) extends TurtleEvent
+  case class Walk(id: UUID, dist: Int) extends TurtleEvent
 
   private def withinRange(pos: Position): Boolean = pos.x.abs < 100 && pos.y.abs < 100
 
-  def create(id: String, pos: Position, dir: Direction): Either[String, TurtleEvent] =
+  def create(id: UUID, pos: Position, dir: Direction): Either[String, TurtleEvent] =
     if (withinRange(pos)) Right(Create(id, pos, dir))
     else Left("Too far away")
 
