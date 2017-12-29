@@ -5,13 +5,15 @@ import cats.effect.IO
 import io.es.infra.Sourced.{CreateSource, Source, UpdateSource}
 import io.es.infra.data._
 import cats.implicits._
+import io.es.infra.EventDecoder.EventDecoder
+import io.es.infra.EventEncoder.EventEncoder
 
-case class CommandHandler[C, S, E](before: Reader[C, IO[Unit]], handler: Reader[C, Source[S, E, Unit]], after: Reader[(C, CommandResult), IO[Unit]]) {
+case class CommandHandler[C <: Command, S <: Aggregate, E <: Event](before: Reader[C, IO[Unit]], handler: Reader[C, Source[S, E, Unit]], after: Reader[(C, CommandResult), IO[Unit]]) {
 
-  def runCommand[P](cmd: C, journal: EventJournal[P])(
-    implicit e: Event[E, P],
-    aggregate: Aggregate[S],
-    command: Command[C],
+  def runCommand[P, T <: String](cmd: C, journal: EventJournal[P])(
+    implicit aggregate: AggregateTag.Aux[S, C, E],
+    encoder: EventEncoder[E, P],
+    decoder: EventDecoder[E, P],
     eHandler: EventHandler[S, E]
   ): IO[CommandResult] = {
     val mainIO: IO[CommandResult] = handler(cmd) match {
@@ -20,21 +22,21 @@ case class CommandHandler[C, S, E](before: Reader[C, IO[Unit]], handler: Reader[
         cs.values.value match {
           case Right((events, state, _)) =>
             for {
-              _ <- journal.write(aggregate.aggregateId(state), 0, events)
-            } yield SuccessCommand(aggregate.aggregateId(state), state, events)
+              _ <- journal.write(state.aggregateId, 0, events)
+            } yield SuccessCommand(state.aggregateId, state, events)
           case Left(message) => IO.pure(FailedCommand(message))
         }
 
       case us@UpdateSource(_) =>
 
-        command.aggregateId(cmd) match {
+        cmd.aggregateId match {
           case Some(uuid) => journal.hydrate(uuid).flatMap {
             case Some((state, version)) =>
               us.sourced.run((), state) match {
                 case Right((events, newState, _)) =>
                   for {
-                    _ <- journal.write(aggregate.aggregateId(newState), version, events)
-                  } yield SuccessCommand(aggregate.aggregateId(newState), newState, events)
+                    _ <- journal.write(newState.aggregateId, version, events)
+                  } yield SuccessCommand(newState.aggregateId, newState, events)
                 case Left(message) => IO.pure(FailedCommand(message))
               }
             case None => IO.pure(FailedCommand("not.found"))
@@ -60,7 +62,7 @@ case class CommandHandler[C, S, E](before: Reader[C, IO[Unit]], handler: Reader[
 }
 
 object CommandHandler {
-  def handle[C, S, E](
+  def handle[C <: Command, S <: Aggregate, E <: Event](
     processBefore: C => IO[Unit] = (_: C) => IO.unit,
     handler: C => Source[S, E, Unit],
     processAfter: (C, CommandResult) => IO[Unit] = (_: C, _: CommandResult) => IO.unit

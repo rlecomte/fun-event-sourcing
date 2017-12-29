@@ -29,11 +29,12 @@ trait TurtleEventCirceInstances {
     case West  => toWestKey
   }
 
-  implicit val decoderDirection: Decoder[Direction] = Decoder[String].map {
-    case `toNorthKey` => North
-    case `toSouthKey` => South
-    case `toEstKey`   => Est
-    case `toWestKey`  => West
+  implicit val decoderDirection: Decoder[Direction] = Decoder[String].emap {
+    case `toNorthKey` => Right(North)
+    case `toSouthKey` => Right(South)
+    case `toEstKey`   => Right(Est)
+    case `toWestKey`  => Right(West)
+    case _ => Left("Unexpected direction.")
   }
 
   implicit val encoderPosition: Encoder[Position] = Encoder.instance { p =>
@@ -55,9 +56,10 @@ trait TurtleEventCirceInstances {
     case ToRight => toRightKey
   }
 
-  implicit val decoderRotation: Decoder[Rotation] = Decoder[String].map {
-    case `toLeftKey` => ToLeft
-    case `toRightKey` => ToRight
+  implicit val decoderRotation: Decoder[Rotation] = Decoder[String].emap {
+    case `toLeftKey` => Right(ToLeft)
+    case `toRightKey` => Right(ToRight)
+    case _ => Left("Unexpected rotation.")
   }
 
   implicit val createEventDecoder: Decoder[Create] = deriveDecoder

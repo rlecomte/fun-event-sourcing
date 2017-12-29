@@ -8,7 +8,7 @@ object TurtleCommandHandler {
   import Turtle._
   import io.es.infra.Sourced._
 
-  val turtleHandler: CommandHandler[TurtleCmd, Turtle, TurtleEvent] = CommandHandler.handle(
+  val turtleHandler: CommandHandler[TurtleCommand, Turtle, TurtleEvent] = CommandHandler.handle(
     cmd => IO(println(s"Handle turtle command $cmd")), {
       case CreateCmd(pos, dir) =>
         sourceNew(create(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"), pos, dir))

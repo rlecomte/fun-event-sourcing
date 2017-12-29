@@ -10,6 +10,7 @@ CREATE TABLE events(
     version bigint NOT NULL,
     data jsonb NOT NULL,
     date_event timestamp NOT NULL DEFAULT now() NOT NULL,
+    aggregate_type character varying(255) NOT NULL,
     PRIMARY KEY (aggregate_id, version),
     FOREIGN KEY (aggregate_id) REFERENCES aggregates(id)
 );
