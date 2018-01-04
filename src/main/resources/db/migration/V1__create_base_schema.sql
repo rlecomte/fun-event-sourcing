@@ -7,6 +7,7 @@ CREATE TABLE aggregates(
 
 CREATE TABLE events(
     aggregate_id uuid NOT NULL,
+    seq_number bigint SERIAL,
     version bigint NOT NULL,
     data jsonb NOT NULL,
     date_event timestamp NOT NULL DEFAULT now() NOT NULL,
@@ -20,3 +21,8 @@ CREATE TABLE snapshots(
     data jsonb NOT NULL,
     version bigint
 );
+
+CREATE TABLE handlers(
+    id character varying(255) NOT NULL,
+    cursor_position: bigint
+)

@@ -14,7 +14,7 @@ object JsonEvent {
     }
 
     def eventEncoder[T <: String, A <: Aggregate](implicit agg: AggregateTag.Aux[A, _, E], encoder: Encoder[E]): EventEncoder[E, Json] = (aggId, version, date, event) => {
-      RawEvent(aggId.value, version.value, encoder(event), date.toInstant.toEpochMilli, agg.aggregateType)
+      RawEvent(aggId.value, version.value, -1L, encoder(event), date.toInstant.toEpochMilli, agg.aggregateType)
     }
   }
 

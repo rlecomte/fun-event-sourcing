@@ -29,7 +29,7 @@ class SqlEventJournal(xa: Transactor[IO]) extends EventJournal[Json] with Doobie
   override def hydrate[S <: Aggregate, E <: Event](aggregateId: UUID)
     (implicit handler: EventHandler[S, E], aggregate: AggregateTag.Aux[S, _, E], jsonEventDecoder: EventDecoder[E, Json]): IO[Option[(S, Long)]] = {
     val sql: Query0[RawEvent[Json]] = sql"""
-       SELECT aggregate_id, version, data, date_event, aggregate_type
+       SELECT aggregate_id, version, seq_number, data, date_event, aggregate_type
        FROM events
        WHERE aggregate_id=$aggregateId
        ORDER BY version
