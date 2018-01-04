@@ -6,10 +6,8 @@ import cats.effect.IO
 import doobie.util.transactor.Transactor
 import io.circe.Json
 import io.es.UUID
-import io.es.infra.EventDecoder.EventDecoder
-import io.es.infra.EventEncoder.EventEncoder
 import io.es.infra.data._
-import io.es.infra.{AggregateTag, ConcurrencyEventException, EventHandler, EventJournal}
+import io.es.infra._
 
 class SqlEventJournal(xa: Transactor[IO]) extends EventJournal[Json] with DoobieMetaInstances {
 

@@ -1,16 +1,10 @@
 package io.es.store.sql
 
 import io.circe.{Decoder, Encoder, Json}
-import io.es.infra.AggregateTag
-import io.es.infra.EventDecoder.EventDecoder
-import io.es.infra.EventEncoder.EventEncoder
+import io.es.infra.{AggregateTag, EventDecoder, EventEncoder}
 import io.es.infra.data.{Aggregate, Event, RawEvent}
 
 object JsonEvent {
-
-  type JsonEventDecoder[E <: Event] = EventDecoder[E, Json]
-
-  type JsonEventEncoder[E <: Event] = EventEncoder[E, Json]
 
   trait JsonEncoderDecoderBuilder[E <: Event] {
     def eventDecoder[T <: String, A <: Aggregate](implicit agg: AggregateTag.Aux[A, _, E], decoder: Decoder[E]): EventDecoder[E, Json] = new PartialFunction[RawEvent[Json], E] {

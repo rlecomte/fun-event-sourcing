@@ -5,8 +5,6 @@ import cats.effect.IO
 import io.es.infra.Sourced.{CreateSource, Source, UpdateSource}
 import io.es.infra.data._
 import cats.implicits._
-import io.es.infra.EventDecoder.EventDecoder
-import io.es.infra.EventEncoder.EventEncoder
 
 case class CommandHandler[C <: Command, S <: Aggregate, E <: Event](before: Reader[C, IO[Unit]], handler: Reader[C, Source[S, E, Unit]], after: Reader[(C, CommandResult), IO[Unit]]) {
 

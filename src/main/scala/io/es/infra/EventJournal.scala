@@ -2,8 +2,6 @@ package io.es.infra
 
 import cats.effect.IO
 import io.es.UUID
-import io.es.infra.EventDecoder.EventDecoder
-import io.es.infra.EventEncoder.EventEncoder
 import io.es.infra.data.{Aggregate, Event}
 
 abstract class EventJournal[P] {
