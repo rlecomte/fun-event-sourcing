@@ -2,6 +2,7 @@ package io.es.domain.turtle
 
 import cats.effect.IO
 import io.es.infra.CommandHandler
+import io.es.infra.data.AggregateId
 
 object TurtleCommandHandler {
 
@@ -11,7 +12,7 @@ object TurtleCommandHandler {
   val turtleHandler: CommandHandler[TurtleCommand, Turtle, TurtleEvent] = CommandHandler.handle(
     cmd => IO(println(s"Handle turtle command $cmd")), {
       case CreateCmd(pos, dir) =>
-        sourceNew(create(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"), pos, dir))
+        sourceNew(create(AggregateId(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000")), pos, dir))
       case WalkRightCmd(_, dist) =>
         walkRight(dist)
       case WalkLeftCmd(_, dist) =>

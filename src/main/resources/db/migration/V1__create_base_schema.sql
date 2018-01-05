@@ -7,8 +7,8 @@ CREATE TABLE aggregates(
 
 CREATE TABLE events(
     aggregate_id uuid NOT NULL,
-    seq_number bigint SERIAL,
     version bigint NOT NULL,
+    seq_number bigint SERIAL,
     data jsonb NOT NULL,
     date_event timestamp NOT NULL DEFAULT now() NOT NULL,
     aggregate_type character varying(255) NOT NULL,

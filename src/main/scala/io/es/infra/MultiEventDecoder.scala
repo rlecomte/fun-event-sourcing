@@ -1,21 +1,37 @@
 package io.es.infra
 
-import cats.effect.Sync
-import io.es.infra.data.{Aggregate, Event}
-import shapeless.{:+:, CNil, Coproduct}
+import cats.effect.IO
+import io.es.infra.data.{Aggregate, Event, RawEvent}
+import shapeless.{::, HList, HNil, Lazy}
+
+trait MultiEventDecoder[L <: HList, P] extends (RawEvent[P] => IO[Event]) {
+  val map: Map[String, EventDecoder[Event, P]]
+}
 
 object MultiEventDecoder {
 
-  implicit def multiDecoderCNil[F[_], P](implicit syncF: Sync[F]): MultiEventDecoder[F, CNil, P] = { rawEvent => syncF.raiseError(UnprocessableEventException(rawEvent.aggregateType))}
+  implicit def multiDecoderHNil[P]: MultiEventDecoder[HNil, P] = new MultiEventDecoder[HNil, P] {
 
-  implicit def multiDecoderCoproduct[F[_], H <: Aggregate, T <: Coproduct, P, E <: Event]
-    (implicit syncF: Sync[F],
-      aggregateTag: AggregateTag.Aux[H, _, E],
-      decoderH: EventDecoder[E, P],
-      multiDecoderT: MultiEventDecoder[F, T, P]): MultiEventDecoder[F, H :+: T, P] = { rawEvent =>
-    if (decoderH.isDefinedAt(rawEvent)) syncF.delay(decoderH(rawEvent))
-    else multiDecoderT(rawEvent)
+    val map: Map[String, EventDecoder[Event, P]] = Map()
+
+    override def apply(rawEvent: RawEvent[P]) = {
+      IO.raiseError[Event](UnprocessableEventException(rawEvent.aggregateType))
+    }
   }
 
-  def apply[F[_], C <: Coproduct, P](implicit syncF: Sync[F], multiDecoder: MultiEventDecoder[F, C, P]): MultiEventDecoder[F, C, P] = multiDecoder
+  implicit def multiDecoderHList[H <: Aggregate, T <: HList, E <: Event, P]
+  (implicit aggregateTag: AggregateTag.Aux[H, _, E],
+    decoderH: Lazy[EventDecoder[E, P]],
+    multiDecoderT: MultiEventDecoder[T, P]): MultiEventDecoder[H :: T, P] = new MultiEventDecoder[H :: T, P] {
+
+    val map: Map[String, EventDecoder[Event, P]] = multiDecoderT.map.updated(aggregateTag.aggregateType, decoderH.value)
+
+    override def apply(rawEvent: RawEvent[P]) = {
+      map.get(aggregateTag.aggregateType)
+        .map(d => IO(d(rawEvent)))
+        .getOrElse(IO.raiseError[Event](UnprocessableEventException(rawEvent.aggregateType)))
+    }
+  }
+
+  def instance[L <: HList, P](implicit multiDecoder: MultiEventDecoder[L, P]): MultiEventDecoder[L, P] = multiDecoder
 }

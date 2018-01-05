@@ -1,39 +1,38 @@
 package io.es.domain.turtle
 
-import io.es.UUID
 import io.es.infra.EventHandler
 import io.es.infra.Sourced.{UpdateSource, source}
-import io.es.infra.data.{Aggregate, Command, Event}
+import io.es.infra.data.{Aggregate, AggregateId, Command, Event}
 
-case class Turtle(aggregateId: UUID, pos: Position, dir: Direction) extends Aggregate
+case class Turtle(aggregateId: AggregateId, pos: Position, dir: Direction) extends Aggregate
 
 object Turtle {
 
   sealed trait TurtleCommand extends Command
   case class CreateCmd(pos: Position, dir: Direction) extends TurtleCommand {
-    override def aggregateId: Option[UUID] = None
+    override def aggregateId: Option[AggregateId] = None
   }
 
-  case class WalkRightCmd(id: UUID, dist: Int) extends TurtleCommand {
-    override def aggregateId: Option[UUID] = Some(id)
+  case class WalkRightCmd(id: AggregateId, dist: Int) extends TurtleCommand {
+    override def aggregateId: Option[AggregateId] = Some(id)
   }
 
-  case class WalkLeftCmd(id: UUID, dist: Int) extends TurtleCommand {
-    override def aggregateId: Option[UUID] = Some(id)
+  case class WalkLeftCmd(id: AggregateId, dist: Int) extends TurtleCommand {
+    override def aggregateId: Option[AggregateId] = Some(id)
   }
 
-  case class WalkCmd(id: UUID, dist: Int) extends TurtleCommand {
-    override def aggregateId: Option[UUID] = Some(id)
+  case class WalkCmd(id: AggregateId, dist: Int) extends TurtleCommand {
+    override def aggregateId: Option[AggregateId] = Some(id)
   }
 
   sealed trait TurtleEvent extends Event
-  case class Create(id: UUID, pos: Position, dir: Direction) extends TurtleEvent
-  case class Turn(id: UUID, rot: Rotation) extends TurtleEvent
-  case class Walk(id: UUID, dist: Int) extends TurtleEvent
+  case class Create(id: AggregateId, pos: Position, dir: Direction) extends TurtleEvent
+  case class Turn(id: AggregateId, rot: Rotation) extends TurtleEvent
+  case class Walk(id: AggregateId, dist: Int) extends TurtleEvent
 
   private def withinRange(pos: Position): Boolean = pos.x.abs < 100 && pos.y.abs < 100
 
-  def create(id: UUID, pos: Position, dir: Direction): Either[String, TurtleEvent] =
+  def create(id: AggregateId, pos: Position, dir: Direction): Either[String, TurtleEvent] =
     if (withinRange(pos)) Right(Create(id, pos, dir))
     else Left("Too far away")
 

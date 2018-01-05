@@ -5,6 +5,7 @@ import io.circe.syntax._
 import io.circe.{Decoder, Encoder, Json}
 import io.es.domain.turtle.Turtle.{Create, Turn, TurtleEvent, Walk}
 import io.es.domain.turtle._
+import io.es.infra.data.AggregateId
 
 trait TurtleEventCirceInstances {
 
@@ -61,6 +62,10 @@ trait TurtleEventCirceInstances {
     case `toRightKey` => Right(ToRight)
     case _ => Left("Unexpected rotation.")
   }
+
+  implicit val aggregateIdDecoder: Decoder[AggregateId] = Decoder.decodeUUID.map(AggregateId)
+
+  implicit val aggregateIdEncoder: Encoder[AggregateId] = Encoder.encodeUUID.contramap(_.value)
 
   implicit val createEventDecoder: Decoder[Create] = deriveDecoder
 

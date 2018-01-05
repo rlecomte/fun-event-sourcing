@@ -8,6 +8,8 @@ import cats.implicits._
 
 case class CommandHandler[C <: Command, S <: Aggregate, E <: Event](before: Reader[C, IO[Unit]], handler: Reader[C, Source[S, E, Unit]], after: Reader[(C, CommandResult), IO[Unit]]) {
 
+  val notFoundCmdResult = IO.pure(FailedCommand("not.found"))
+
   def runCommand[P, T <: String](cmd: C, journal: EventJournal[P])(
     implicit aggregate: AggregateTag.Aux[S, C, E],
     encoder: EventEncoder[E, P],
@@ -20,7 +22,7 @@ case class CommandHandler[C <: Command, S <: Aggregate, E <: Event](before: Read
         cs.values.value match {
           case Right((events, state, _)) =>
             for {
-              _ <- journal.write(state.aggregateId, 0, events)
+              _ <- journal.write(state.aggregateId, Version(0), events)
             } yield SuccessCommand(state.aggregateId, state, events)
           case Left(message) => IO.pure(FailedCommand(message))
         }
@@ -37,9 +39,9 @@ case class CommandHandler[C <: Command, S <: Aggregate, E <: Event](before: Read
                   } yield SuccessCommand(newState.aggregateId, newState, events)
                 case Left(message) => IO.pure(FailedCommand(message))
               }
-            case None => IO.pure(FailedCommand("not.found"))
+            case None => notFoundCmdResult
           }
-          case None => IO.pure(FailedCommand("not.found"))
+          case None => notFoundCmdResult
         }
     }
 

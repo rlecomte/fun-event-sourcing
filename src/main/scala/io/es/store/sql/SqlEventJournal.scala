@@ -5,7 +5,6 @@ import java.time.ZonedDateTime
 import cats.effect.IO
 import doobie.util.transactor.Transactor
 import io.circe.Json
-import io.es.UUID
 import io.es.infra.data._
 import io.es.infra._
 
@@ -17,7 +16,7 @@ class SqlEventJournal(xa: Transactor[IO]) extends EventJournal[Json] with Doobie
   import doobie.implicits._
   import doobie.postgres.implicits._
 
-  override def write[S <: Aggregate, E <: Event](aggregateId: UUID, originatingVersion: Long, events: List[E])
+  override def write[S <: Aggregate, E <: Event](aggregateId: AggregateId, originatingVersion: Version, events: List[E])
     (implicit aggregate: AggregateTag.Aux[S, _, E], encoder: EventEncoder[E, Json]): IO[Unit] = {
     (for {
       _ <- failIfConflict(aggregateId, originatingVersion)
@@ -26,8 +25,8 @@ class SqlEventJournal(xa: Transactor[IO]) extends EventJournal[Json] with Doobie
   }
 
 
-  override def hydrate[S <: Aggregate, E <: Event](aggregateId: UUID)
-    (implicit handler: EventHandler[S, E], aggregate: AggregateTag.Aux[S, _, E], jsonEventDecoder: EventDecoder[E, Json]): IO[Option[(S, Long)]] = {
+  override def hydrate[S <: Aggregate, E <: Event](aggregateId: AggregateId)
+    (implicit handler: EventHandler[S, E], aggregate: AggregateTag.Aux[S, _, E], jsonEventDecoder: EventDecoder[E, Json]): IO[Option[(S, Version)]] = {
     val sql: Query0[RawEvent[Json]] = sql"""
        SELECT aggregate_id, version, seq_number, data, date_event, aggregate_type
        FROM events
@@ -37,13 +36,13 @@ class SqlEventJournal(xa: Transactor[IO]) extends EventJournal[Json] with Doobie
 
     sql.process
       .map { rawEvent => (jsonEventDecoder(rawEvent), rawEvent.version) }
-      .fold[Option[(S, Long)]](None) { case (s, (e, v)) => Some((handler(s.map(_._1), e), v)) }
+      .fold[Option[(S, Version)]](None) { case (s, (e, v)) => Some((handler(s.map(_._1), e), v)) }
       .list
       .transact(xa)
       .map(_.headOption.flatten)
   }
 
-  private def failIfConflict(aggregateId: UUID, originatingVersion: Long): ConnectionIO[Unit] = {
+  private def failIfConflict(aggregateId: AggregateId, originatingVersion: Version): ConnectionIO[Unit] = {
 
     val sql: Query0[Boolean] =
       sql"""
@@ -61,11 +60,11 @@ class SqlEventJournal(xa: Transactor[IO]) extends EventJournal[Json] with Doobie
     } yield ()
   }
 
-  private def writeEvents[S <: Aggregate, E <: Event](aggregateId: UUID, originatingVersion: Long, events: List[E])
+  private def writeEvents[S <: Aggregate, E <: Event](aggregateId: AggregateId, originatingVersion: Version, events: List[E])
     (implicit aggregate: AggregateTag.Aux[S, _, E], encoder: EventEncoder[E, Json]): ConnectionIO[Unit] = {
 
     val insertAggregate: ConnectionIO[Unit] = {
-      if (originatingVersion < 1) {
+      if (originatingVersion.value < 1) {
         val sql: Update0 =
           sql"""
                INSERT INTO aggregates (id, aggregate_type, version) VALUES ($aggregateId, ${aggregate.aggregateType}, 0)
@@ -77,8 +76,12 @@ class SqlEventJournal(xa: Transactor[IO]) extends EventJournal[Json] with Doobie
       }
     }
 
-    val increments = Stream.iterate(originatingVersion + 1)(_ + 1).take(events.size + 1).toList
-    val tuples = events.zip(increments).map { case (e, v) => encoder(AggregateId(aggregateId), Version(v), ZonedDateTime.now(), e) }
+    val increments = Stream.iterate(originatingVersion.value + 1)(_ + 1)
+      .take(events.size + 1)
+      .map(Version).toList
+
+    val tuples = events.zip(increments)
+      .map { case (e, v) => encoder(aggregateId, v, ZonedDateTime.now(), e) }
 
     val sql = "INSERT INTO events (aggregate_id, version, data) VALUES (?, ?, ?)"
 

@@ -4,7 +4,7 @@ import cats.effect.IO
 import doobie.hikari.HikariTransactor
 import io.es.domain.turtle.Turtle.{CreateCmd, TurtleCommand, WalkCmd, WalkLeftCmd, WalkRightCmd}
 import io.es.domain.turtle.{North, Position, TurtleCommandHandler}
-import io.es.infra.data.CommandResult
+import io.es.infra.data.{AggregateId, CommandResult}
 import io.es.store.sql.SqlEventJournal
 
 object Main extends App {
@@ -24,7 +24,8 @@ object Main extends App {
 
   def readAndExecuteCommand(line: String): IO[CommandResult] = {
 
-    val id = java.util.UUID.fromString("00000000-0000-0000-0000-000000000000")
+    val id = AggregateId(java.util.UUID.fromString("00000000-0000-0000-0000-000000000000"))
+
     def commandParser(value: String): Option[TurtleCommand] = value match {
       case "create" => Some(CreateCmd(Position.zero, North))
       case "right" => Some(WalkRightCmd(id, 1))
