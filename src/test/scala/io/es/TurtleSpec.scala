@@ -2,36 +2,32 @@ package io.es
 
 import org.scalatest.{FlatSpec, Matchers}
 
-import io.es.model._
-import io.es.model.Turtle.{Create, Turn, TurtleEvent, Walk}
+import io.es.domain.turtle._
+import io.es.domain.turtle.Turtle.{Create, Turn, Walk}
+import io.es.infra.data.AggregateId
 
 class TurtleSpec extends FlatSpec with Matchers {
-  import Sourced._
+  import io.es.infra.Sourced._
+
+  val id = AggregateId.zero
 
   "The V8 object" should "be valid" in {
 
-    def walkRight(dist: Int): UpdateSource[Turtle, TurtleEvent, Unit] = {
+    val tested = sourceNew(Turtle.create(id, Position(0, 1), North)).andThen[Unit] {
       for {
-        _ <- source(Turtle.turn(ToRight))
-        _ <- source(Turtle.walk(dist))
-      } yield ()
-    }
-
-    val tested = sourceNew(Turtle.create("1", Position(0, 1), North)).andThen[Unit] {
-      for {
-        _ <- walkRight(2)
-        _ <- walkRight(1)
+        _ <- Turtle.walkRight(2)
+        _ <- Turtle.walkRight(1)
       } yield ()
     }
 
     tested.events shouldBe Right(Vector(
-      Create("1", Position(0, 1), North),
-      Turn("1", ToRight),
-      Walk("1", 2),
-      Turn("1", ToRight),
-      Walk("1", 1)
+      Create(id, Position(0, 1), North),
+      Turn(id, ToRight),
+      Walk(id, 2),
+      Turn(id, ToRight),
+      Walk(id, 1)
     ))
 
-    tested.state shouldBe Right(Turtle("1", Position(2, 0), South))
+    tested.state shouldBe Right(Turtle(id, Position(2, 0), South))
   }
 }
