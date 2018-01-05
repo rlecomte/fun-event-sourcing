@@ -1,7 +1,8 @@
 package io.es
 
+import com.typesafe.config.ConfigFactory
+
 import cats.effect.IO
-import doobie.hikari.HikariTransactor
 import io.es.domain.turtle.Turtle.{CreateCmd, TurtleCommand, WalkCmd, WalkLeftCmd, WalkRightCmd}
 import io.es.domain.turtle.{North, Position, TurtleCommandHandler}
 import io.es.infra.data.{AggregateId, CommandResult}
@@ -11,13 +12,14 @@ object Main extends App {
 
   import io.es.domain._
 
+  val config = ConfigFactory.load()
+  val sqlStoreConfig = SqlStoreConfig(config.atKey("store.sql"))
+
   object infra {
-    val xa = HikariTransactor[IO](
-      "org.postgresql.Driver",
-      "jdbc:postgresql://127.0.0.1:5432/world",
-      "postgres",
-      null
-    ).unsafeRunSync()
+
+    val dbBootstrap = DbBootstrap(sqlStoreConfig)
+
+    val xa = SqlTransactor.hikari(sqlStoreConfig)
 
     val journal = new SqlEventJournal(xa)
   }
@@ -54,6 +56,6 @@ object Main extends App {
   } yield ()
 
 
-  DbBootstrap.migrate()
+  infra.dbBootstrap.migrate()
   program.unsafeRunSync()
 }

@@ -1,3 +1,3 @@
 package io.es.infra
 
-object ConcurrencyEventException extends RuntimeException
+object ConcurrencyEventException extends Exception

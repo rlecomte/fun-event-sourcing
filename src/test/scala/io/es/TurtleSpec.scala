@@ -4,11 +4,12 @@ import org.scalatest.{FlatSpec, Matchers}
 
 import io.es.domain.turtle._
 import io.es.domain.turtle.Turtle.{Create, Turn, Walk}
+import io.es.infra.data.AggregateId
 
 class TurtleSpec extends FlatSpec with Matchers {
   import io.es.infra.Sourced._
 
-  val id = java.util.UUID.fromString("00000000-0000-0000-0000-000000000000")
+  val id = AggregateId.zero
 
   "The V8 object" should "be valid" in {
 

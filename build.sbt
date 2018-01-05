@@ -41,7 +41,7 @@ lazy val root = (project in file(".")).
 
     libraryDependencies += scalaTest % Test,
     libraryDependencies += "org.flywaydb" % "flyway-core" % flywayVersion,
-    libraryDependencies += "com.h2database" % "h2" % h2Version,
+    libraryDependencies += "com.github.pureconfig" %% "pureconfig" % "0.8.0",
     libraryDependencies ++= Seq(
       "io.circe" %% "circe-core",
       "io.circe" %% "circe-generic",

@@ -1,7 +1,7 @@
 package io.es.infra
 
 import cats.Eval
-import cats.data.ReaderWriterStateT
+import cats.data.{NonEmptyList, ReaderWriterStateT}
 import cats.implicits._
 
 object Sourced {
@@ -26,14 +26,14 @@ object Sourced {
   sealed trait Source[STATE, EVENT, A]
 
   case class CreateSource[STATE, EVENT, A](init: Result[(STATE, EVENT)], next: UpdateSource[STATE, EVENT, A]) extends Source[STATE, EVENT, A] {
-    val values: Eval[Result[(List[EVENT], STATE, A)]] = Eval.later {
+    val values: Eval[Result[(NonEmptyList[EVENT], STATE, A)]] = Eval.later {
       init.flatMap { case (state, event) =>
           val r = next.sourced.run((), state)
-          r.map { case (e, s, a) => (event +: e, s, a)}
+          r.map { case (e, s, a) => (NonEmptyList(event, e), s, a)}
       }
     }
 
-    def events: Result[List[EVENT]] = values.value.map(_._1)
+    def events: Result[NonEmptyList[EVENT]] = values.value.map(_._1)
 
     def state: Result[STATE] = values.value.map(_._2)
 

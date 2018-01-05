@@ -63,7 +63,7 @@ trait TurtleEventCirceInstances {
     case _ => Left("Unexpected rotation.")
   }
 
-  implicit val aggregateIdDecoder: Decoder[AggregateId] = Decoder.decodeUUID.map(AggregateId)
+  implicit val aggregateIdDecoder: Decoder[AggregateId] = Decoder.decodeUUID.map(AggregateId.apply)
 
   implicit val aggregateIdEncoder: Encoder[AggregateId] = Encoder.encodeUUID.contramap(_.value)
 

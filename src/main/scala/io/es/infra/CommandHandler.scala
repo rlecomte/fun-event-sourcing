@@ -1,6 +1,6 @@
 package io.es.infra
 
-import cats.data.Reader
+import cats.data.{NonEmptyList, Reader}
 import cats.effect.IO
 import io.es.infra.Sourced.{CreateSource, Source, UpdateSource}
 import io.es.infra.data._
@@ -22,8 +22,8 @@ case class CommandHandler[C <: Command, S <: Aggregate, E <: Event](before: Read
         cs.values.value match {
           case Right((events, state, _)) =>
             for {
-              _ <- journal.write(state.aggregateId, Version(0), events)
-            } yield SuccessCommand(state.aggregateId, state, events)
+              _ <- journal.write(state.aggregateId, Version.origin, events)
+            } yield SuccessCommand(state.aggregateId)
           case Left(message) => IO.pure(FailedCommand(message))
         }
 
@@ -35,8 +35,8 @@ case class CommandHandler[C <: Command, S <: Aggregate, E <: Event](before: Read
               us.sourced.run((), state) match {
                 case Right((events, newState, _)) =>
                   for {
-                    _ <- journal.write(newState.aggregateId, version, events)
-                  } yield SuccessCommand(newState.aggregateId, newState, events)
+                    _ <- journal.write(newState.aggregateId, version, NonEmptyList.fromList(events).get)
+                  } yield SuccessCommand(newState.aggregateId)
                 case Left(message) => IO.pure(FailedCommand(message))
               }
             case None => notFoundCmdResult
