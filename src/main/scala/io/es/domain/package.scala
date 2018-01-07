@@ -10,7 +10,7 @@ import shapeless.{::, HNil}
 
 package object domain extends TurtleEventCirceInstances {
 
-  implicit val turtleAggregate: AggregateTag.Aux[Turtle, TurtleCommand, TurtleEvent] = AggregateTag("turtle")
+  implicit val turtleAggregate: AggregateTag[Turtle, TurtleCommand, TurtleEvent] = AggregateTag("turtle")
 
   implicit val turtleJsonEventEncoder: JsonEventEncoder[TurtleEvent] = JsonEvent[TurtleEvent].eventEncoder
 

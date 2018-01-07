@@ -20,7 +20,7 @@ object MultiEventDecoder {
   }
 
   implicit def multiDecoderHList[H <: Aggregate, T <: HList, E <: Event, P]
-  (implicit aggregateTag: AggregateTag.Aux[H, _, E],
+  (implicit aggregateTag: AggregateTag[H, _, E],
     decoderH: Lazy[EventDecoder[E, P]],
     multiDecoderT: MultiEventDecoder[T, P]): MultiEventDecoder[H :: T, P] = new MultiEventDecoder[H :: T, P] {
 

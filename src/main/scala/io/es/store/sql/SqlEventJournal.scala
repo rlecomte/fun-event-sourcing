@@ -19,7 +19,7 @@ class SqlEventJournal(xa: Transactor[IO]) extends EventJournal[Json] with Doobie
   import doobie.postgres.implicits._
 
   override def write[S <: Aggregate, E <: Event](aggregateId: AggregateId, originatingVersion: Version, events: NonEmptyList[E])
-    (implicit aggregate: AggregateTag.Aux[S, _, E], encoder: EventEncoder[E, Json]): IO[Unit] = {
+    (implicit aggregate: AggregateTag[S, _, E], encoder: EventEncoder[E, Json]): IO[Unit] = {
 
     val selectVersionOfAggregate: ConnectionIO[Option[Version]] = {
       val sql: Query0[Version] = {
@@ -81,7 +81,7 @@ class SqlEventJournal(xa: Transactor[IO]) extends EventJournal[Json] with Doobie
   }
 
   override def hydrate[S <: Aggregate, E <: Event](aggregateId: AggregateId)
-    (implicit handler: EventHandler[S, E], aggregate: AggregateTag.Aux[S, _, E], jsonEventDecoder: EventDecoder[E, Json]): IO[Option[(S, Version)]] = {
+    (implicit handler: EventHandler[S, E], aggregate: AggregateTag[S, _, E], jsonEventDecoder: EventDecoder[E, Json]): IO[Option[(S, Version)]] = {
     val sql: Query0[RawEvent[Json]] = sql"""
        SELECT aggregate_id, version, seq_number, data, date_event, aggregate_type
        FROM events

@@ -11,7 +11,7 @@ case class CommandHandler[C <: Command, S <: Aggregate, E <: Event](before: Read
   val notFoundCmdResult = IO.pure(FailedCommand("not.found"))
 
   def runCommand[P, T <: String](cmd: C, journal: EventJournal[P])(
-    implicit aggregate: AggregateTag.Aux[S, C, E],
+    implicit aggregate: AggregateTag[S, C, E],
     encoder: EventEncoder[E, P],
     decoder: EventDecoder[E, P],
     eHandler: EventHandler[S, E]
