@@ -17,7 +17,7 @@ package object infra {
     def apply[STATE, EVENT](eventHandler: EventHandler[STATE, EVENT]): EventHandler[STATE, EVENT] = eventHandler
   }
 
-  type EventDecoder[E <: Event, P] = PartialFunction[RawEvent[P], E]
+  type EventDecoder[E <: Event, P] = RawEvent[P] => E
 
-  type EventEncoder[E <: Event, P] = (AggregateId, Version, ZonedDateTime, E) => RawEvent[P]
+  type EventEncoder[E <: Event, P] = (AggregateId, String, Version, ZonedDateTime, E) => RawEvent[P]
 }

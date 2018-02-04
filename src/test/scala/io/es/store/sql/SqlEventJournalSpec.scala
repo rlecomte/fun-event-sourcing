@@ -39,6 +39,7 @@ class SqlEventJournalSpec extends FlatSpec with Matchers with BeforeAndAfterEach
       North
     ).right.get
 
-    journal.write(id, Version.origin, NonEmptyList.one(createEvent)).unsafeRunSync()
+
+    //journal.write()(id, Version.origin, NonEmptyList.one(createEvent)).unsafeRunSync()
   }
 }

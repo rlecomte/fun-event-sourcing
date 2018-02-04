@@ -5,7 +5,7 @@ import java.time.ZonedDateTime
 import io.es.UUID
 
 case class RawEvent[P](
-  aggregateId: UUID,
+  aggregateId: AggregateId,
   version: Version,
   seqNumber: SequenceNumber,
   data: P,

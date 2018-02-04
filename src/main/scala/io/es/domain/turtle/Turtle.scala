@@ -1,7 +1,8 @@
 package io.es.domain.turtle
 
+import cats.effect.IO
 import io.es.infra.EventHandler
-import io.es.infra.Sourced.{UpdateSource, source}
+import io.es.infra.Sourced.{Source, UpdateSource, source, sourceNew}
 import io.es.infra.data.{Aggregate, AggregateId, Command, Event}
 
 case class Turtle(aggregateId: AggregateId, pos: Position, dir: Direction) extends Aggregate
@@ -9,21 +10,13 @@ case class Turtle(aggregateId: AggregateId, pos: Position, dir: Direction) exten
 object Turtle {
 
   sealed trait TurtleCommand extends Command
-  case class CreateCmd(pos: Position, dir: Direction) extends TurtleCommand {
-    override def aggregateId: Option[AggregateId] = None
-  }
+  case class CreateCmd(aggregateId: AggregateId = AggregateId.newId(), pos: Position, dir: Direction) extends TurtleCommand
 
-  case class WalkRightCmd(id: AggregateId, dist: Int) extends TurtleCommand {
-    override def aggregateId: Option[AggregateId] = Some(id)
-  }
+  case class WalkRightCmd(aggregateId: AggregateId, dist: Int) extends TurtleCommand
 
-  case class WalkLeftCmd(id: AggregateId, dist: Int) extends TurtleCommand {
-    override def aggregateId: Option[AggregateId] = Some(id)
-  }
+  case class WalkLeftCmd(aggregateId: AggregateId, dist: Int) extends TurtleCommand
 
-  case class WalkCmd(id: AggregateId, dist: Int) extends TurtleCommand {
-    override def aggregateId: Option[AggregateId] = Some(id)
-  }
+  case class WalkCmd(aggregateId: AggregateId, dist: Int) extends TurtleCommand
 
   sealed trait TurtleEvent extends Event
   case class Create(id: AggregateId, pos: Position, dir: Direction) extends TurtleEvent
@@ -66,5 +59,16 @@ object Turtle {
     case (Some(t), Walk(id, dist)) if id == t.aggregateId =>
       t.copy(pos = t.pos.move(t.dir, dist))
     case _ => throw new RuntimeException("Unexpected state.")
+  }
+
+  val turtleCommandHandler: TurtleCommand => IO[Source[Turtle, TurtleEvent, Unit]] = {
+    case CreateCmd(id, pos, dir) =>
+      IO(sourceNew(create(id, pos, dir)))
+    case WalkRightCmd(_, dist) =>
+      IO(walkRight(dist))
+    case WalkLeftCmd(_, dist) =>
+      IO(walkLeft(dist))
+    case WalkCmd(_, dist) =>
+      IO(source(walk(dist)))
   }
 }
