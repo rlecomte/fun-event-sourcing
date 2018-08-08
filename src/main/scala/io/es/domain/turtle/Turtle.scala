@@ -24,7 +24,7 @@ object Turtle extends TurtleAggregateInstance {
   }
 }
 
-private[this] trait TurtleAggregateInstance {
+trait TurtleAggregateInstance {
 
   implicit val turtleAggregate: Aggregate[Turtle, TurtleEvent] = new Aggregate[Turtle, TurtleEvent] {
     override def tag: String = "turtle"
@@ -40,17 +40,3 @@ private[this] trait TurtleAggregateInstance {
     }
   }
 }
-
-/*private[this] trait TurtleCommandHandlerInstance {
-
-  import io.es.free._
-  implicit val commandHandler: CommandHandler[Stack, Turtle, TurtleCommand, TurtleEvent] = CommandHandler[Stack, Turtle, TurtleCommand, TurtleEvent] {
-    case Create =>
-      fromSource(
-        Source
-          .create(Turtle.create(UUID.randomUUID().toString, Position.zero, North))
-      )
-    case Walk(id, dist) =>
-      fromSource(Source.hydrate(id).andThen(Turtle.walk(dist)))
-  }
-}*/

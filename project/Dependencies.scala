@@ -7,6 +7,7 @@ object Dependencies {
 
   lazy val scalaTest = "org.scalatest" %% "scalatest" % scalaTestVersion
   lazy val fs2 = "co.fs2" %% "fs2-core" % fs2Version
+  lazy val catsFree = "org.typelevel" %% "cats-free" % "1.1.0"
 
   lazy val circe = Seq(
     "io.circe" %% "circe-core",

@@ -11,5 +11,6 @@ lazy val root = (project in file(".")).
     libraryDependencies += scalaTest % Test,
     libraryDependencies += fs2,
     libraryDependencies ++= circe,
+    libraryDependencies += catsFree,
     addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.6")
   )
