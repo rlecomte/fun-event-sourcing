@@ -8,6 +8,8 @@ lazy val root = (project in file(".")).
       version      := "0.1.0-SNAPSHOT"
     )),
     name := "Functional Event Sourcing",
-    libraryDependencies += "org.typelevel" %% "cats-core" % "1.0.0-RC1",
-    libraryDependencies += scalaTest % Test
+    libraryDependencies += scalaTest % Test,
+    libraryDependencies += fs2,
+    libraryDependencies ++= circe,
+    addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.6")
   )

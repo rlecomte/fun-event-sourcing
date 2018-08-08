@@ -1,0 +1,56 @@
+package io.es.domain.turtle
+
+import java.util.UUID
+
+import io.es.infra.data.Aggregate
+
+case class Turtle(id: UUID, pos: Position, dir: Direction)
+
+object Turtle extends TurtleAggregateInstance {
+
+  private def withinRange(pos: Position): Boolean = pos.x.abs < 100 && pos.y.abs < 100
+
+  def create(id: UUID, pos: Position, dir: Direction): Either[String, TurtleEvent] =
+    if (withinRange(pos)) Right(TurtleCreated(id, pos, dir))
+    else Left("Too far away")
+
+  def turn(rot: Rotation)(turtle: Turtle): Either[String, TurtleEvent] =
+    Right(TurtleDirectionChanged(turtle.id, rot))
+
+  def walk(dist: Int)(turtle: Turtle): Either[String, TurtleEvent] = {
+    val newPos = turtle.pos.move(turtle.dir, dist)
+    if (withinRange(newPos)) Right(TurtleMoved(turtle.id, dist))
+    else Left("Too far away")
+  }
+}
+
+private[this] trait TurtleAggregateInstance {
+
+  implicit val turtleAggregate: Aggregate[Turtle, TurtleEvent] = new Aggregate[Turtle, TurtleEvent] {
+    override def tag: String = "turtle"
+
+    override def id(aggregate: Turtle): UUID = aggregate.id
+
+    override def handle(aggregate: Option[Turtle])(event: TurtleEvent): Turtle = (aggregate, event) match {
+      case (None, TurtleCreated(id, pos, dir)) => Turtle(id, pos, dir)
+      case (Some(t), TurtleDirectionChanged(id, rot)) if id == t.id =>
+        t.copy(dir = t.dir.rotate(rot))
+      case (Some(t), TurtleMoved(id, dist)) if id == t.id =>
+        t.copy(pos = t.pos.move(t.dir, dist))
+    }
+  }
+}
+
+/*private[this] trait TurtleCommandHandlerInstance {
+
+  import io.es.free._
+  implicit val commandHandler: CommandHandler[Stack, Turtle, TurtleCommand, TurtleEvent] = CommandHandler[Stack, Turtle, TurtleCommand, TurtleEvent] {
+    case Create =>
+      fromSource(
+        Source
+          .create(Turtle.create(UUID.randomUUID().toString, Position.zero, North))
+      )
+    case Walk(id, dist) =>
+      fromSource(Source.hydrate(id).andThen(Turtle.walk(dist)))
+  }
+}*/

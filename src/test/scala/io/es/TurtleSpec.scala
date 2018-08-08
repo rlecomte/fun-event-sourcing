@@ -1,37 +1,63 @@
 package io.es
 
+import io.es.domain.turtle.{Turtle, TurtleEvent}
+import io.es.domain.turtle.model._
+import io.es.example.turtle.TurtleEvent
+import io.es.infra.{PartialSource, Source}
 import org.scalatest.{FlatSpec, Matchers}
 
-import io.es.model._
-import io.es.model.Turtle.{Create, Turn, TurtleEvent, Walk}
-
 class TurtleSpec extends FlatSpec with Matchers {
-  import Sourced._
 
   "The V8 object" should "be valid" in {
+    //implicit val sourceIntepreter: SourceInterpreter[IO] = IOSourceInterpreter
 
-    def walkRight(dist: Int): UpdateSource[Turtle, TurtleEvent, Unit] = {
-      for {
-        _ <- source(Turtle.turn(ToRight))
-        _ <- source(Turtle.walk(dist))
-      } yield ()
+    import io.es.free._
+
+    journal.hydrate(java.util.UUID.randomUUID()).flatMap { _ =>
+
+
     }
 
-    val tested = sourceNew(Turtle.create("1", Position(0, 1), North)).andThen[Unit] {
-      for {
-        _ <- walkRight(2)
-        _ <- walkRight(1)
-      } yield ()
+    def walkRight[F[_]](dist: Int): PartialSource[Turtle, TurtleEvent] = {
+      Source
+        .partial(Turtle.turn(ToRight))
+        .andThen(Turtle.walk(dist)(_))
     }
 
-    tested.events shouldBe Right(Vector(
-      Create("1", Position(0, 1), North),
-      Turn("1", ToRight),
-      Walk("1", 2),
-      Turn("1", ToRight),
-      Walk("1", 1)
-    ))
+    val source = Source
+      .create[Turtle, TurtleEvent](Turtle.create("1", Position(0, 1), North))
+      .andThen(walkRight(2))
+      .andThen(walkRight(1))
 
-    tested.state shouldBe Right(Turtle("1", Position(2, 0), South))
+
+    trait Aggregate[A] {
+      type Event
+      def tag: String
+    }
+
+    object Aggregate {
+      type Aux[A, E] = Aggregate[A] { type Event = E }
+
+      def define[A, E](tag: String): Aggregate.Aux[A, E] = new Aggregate[A] {
+        type Event = E
+
+        override def tag: String = tag
+      }
+
+      def fromAggregate[A] = {
+
+      }
+    }
+
+
+    /*events shouldBe List(
+      TurtleCreated("1", Position(0, 1), North),
+      TurtleDirectionChanged("1", ToRight),
+      TurtleMoved("1", 2),
+      TurtleDirectionChanged("1", ToRight),
+      TurtleMoved("1", 1)
+    )
+
+    state shouldBe Turtle("1", Position(2, 0), South)*/
   }
 }
