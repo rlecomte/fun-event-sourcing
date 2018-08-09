@@ -26,17 +26,18 @@ object Turtle extends TurtleAggregateInstance {
 
 trait TurtleAggregateInstance {
 
-  implicit val turtleAggregate: Aggregate[Turtle, TurtleEvent] = new Aggregate[Turtle, TurtleEvent] {
+  val turtleAggregate: Aggregate[Turtle, TurtleEvent] = new Aggregate[Turtle, TurtleEvent] {
     override def tag: String = "turtle"
 
     override def id(aggregate: Turtle): UUID = aggregate.id
 
-    override def handle(aggregate: Option[Turtle])(event: TurtleEvent): Turtle = (aggregate, event) match {
-      case (None, TurtleCreated(id, pos, dir)) => Turtle(id, pos, dir)
+    override def handle(aggregate: Option[Turtle])(event: TurtleEvent): Option[Turtle] = (aggregate, event) match {
+      case (None, TurtleCreated(id, pos, dir)) => Some(Turtle(id, pos, dir))
       case (Some(t), TurtleDirectionChanged(id, rot)) if id == t.id =>
-        t.copy(dir = t.dir.rotate(rot))
+        Some(t.copy(dir = t.dir.rotate(rot)))
       case (Some(t), TurtleMoved(id, dist)) if id == t.id =>
-        t.copy(pos = t.pos.move(t.dir, dist))
+        Some(t.copy(pos = t.pos.move(t.dir, dist)))
+      case _ => None
     }
   }
 }

@@ -7,5 +7,5 @@ trait Aggregate[A, E] {
 
   def id(aggregate: A): UUID
 
-  def handle(aggregate: Option[A])(event: E): A
+  def handle(aggregate: Option[A])(event: E): Option[A]
 }

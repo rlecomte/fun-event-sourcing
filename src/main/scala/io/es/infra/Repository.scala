@@ -6,13 +6,15 @@ import io.es._
 import io.es.algebra._
 import io.es.infra.data.{Aggregate, EventFormat}
 
-import scala.annotation.tailrec
-
-class Repository[S, E](implicit aggregate: Aggregate[S, E], format: EventFormat[E]) {
+//TODO create specific error type
+class Repository[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]) {
 
   def get(id: java.util.UUID): Stack[S] = journal.hydrate(
     id,
-    json => format.decode(json).map(aggregate.handle(None))
+    json => format.decode(json).flatMap(e =>
+      aggregate.handle(None)(e)
+        .toRight("Uncaught event type.")
+    )
   )
 
   def save(source: Source[S, E])(implicit monadErr: MonadError[Stack, Throwable]): Stack[SourceResult[S, E]] =
@@ -25,40 +27,40 @@ class Repository[S, E](implicit aggregate: Aggregate[S, E], format: EventFormat[
   private def applySource(source: Source[S, E])(implicit monadErr: MonadError[Stack, Throwable]): Stack[SourceResult[S, E]] =  {
 
     def applyPartialSource(state: S, firstEvent: Option[E])(list: List[S => Result[E]]): Stack[SourceResult[S, E]] = {
-      @tailrec
-      def rec(state: S, events: List[E], funs: List[S => Result[E]]): Stack[SourceResult[S, E]] = funs match {
-        case f :: others =>
-          f(state)  match {
-            case Right(event) =>
-              val currentEvents = event :: events
-              val currentState = aggregate.handle(Some(state))(event)
-              rec(currentState, currentEvents, others)
-            case Left(err) =>
-              monadErr.raiseError(new RuntimeException(err))
-          }
-        case Nil => monadErr.pure(SourceResult(state, events))
+      var rest = list.reverse
+      var currentState = state
+      var appliedEvents = firstEvent.map(e => e :: Nil).getOrElse(Nil)
+
+      while (rest.nonEmpty) {
+        rest.head(currentState)  match {
+          case Right(newEvent) =>
+            aggregate.handle(Some(currentState))(newEvent) match {
+              case Some(newState) =>
+                currentState = newState
+                appliedEvents = newEvent :: appliedEvents
+
+              case None => return monadErr.raiseError(new RuntimeException("Uncaught event type."))
+            }
+          case Left(err) => return monadErr.raiseError(new RuntimeException(err))
+        }
+
+        rest = rest.tail
       }
 
-      rec(state, firstEvent.map(e => e :: Nil).getOrElse(Nil), list.reverse)
+      monadErr.pure(SourceResult(currentState, appliedEvents))
     }
 
     source match {
       case Source(NewSource(f), PartialSource(list)) =>
-        f match {
-          case Right(event) =>
-            applyPartialSource(aggregate.handle(None)(event), Some(event))(list)
+        f.flatMap(e => aggregate.handle(None)(e).map(s => (s, e)).toRight("Uncaught event type.")) match {
+          case Right((state, event)) =>
+            applyPartialSource(state, Some(event))(list)
           case Left(err) =>
-            monadErr.raiseError(new RuntimeException("fail : " + err))
+            monadErr.raiseError(new RuntimeException(err))
         }
 
       case Source(HydratedSource(id), PartialSource(list)) =>
         get(id).flatMap(s => applyPartialSource(s, None)(list))
     }
   }
-}
-
-object Repository {
-  def apply[S, E](
-                   implicit aggregate: Aggregate[S, E], format: EventFormat[E]
-                 ): Repository[S, E] = new Repository
 }
