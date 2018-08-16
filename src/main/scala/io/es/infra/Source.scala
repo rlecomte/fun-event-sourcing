@@ -19,8 +19,6 @@ case class PartialSource[S, E](list: List[S => Result[E]] = Nil) extends AnyVal 
   def andThen(f: PartialSource[S, E]): PartialSource[S, E] = PartialSource(f.list ++ list)
 }
 
-case class SourceResult[S, E](state: S, events: List[E])
-
 object Source {
   def create[S, E](init: Result[E]): Source[S, E] = Source(NewSource(init))
 

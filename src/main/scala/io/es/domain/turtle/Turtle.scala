@@ -2,7 +2,7 @@ package io.es.domain.turtle
 
 import java.util.UUID
 
-import io.es.infra.data.Aggregate
+import io.es.infra.data.{Aggregate, Tag}
 
 case class Turtle(id: UUID, pos: Position, dir: Direction)
 
@@ -27,7 +27,7 @@ object Turtle extends TurtleAggregateInstance {
 trait TurtleAggregateInstance {
 
   val turtleAggregate: Aggregate[Turtle, TurtleEvent] = new Aggregate[Turtle, TurtleEvent] {
-    override def tag: String = "turtle"
+    override def tag: Tag = Tag("turtle")
 
     override def id(aggregate: Turtle): UUID = aggregate.id
 
