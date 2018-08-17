@@ -39,7 +39,7 @@ class Repository[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]) {
     override def tuple[A](ta: (SourceLog[S, E], A)): F[A] = tell(ta._1) *> sync.pure(ta._2)
   }
 
-  def save[F[_]: Journal: SourceLogger](source: Source[S, E])(implicit sync: Sync[F]): F[Either[SourceError, UUID]] =  {
+  def save[F[_]: Journal: SourceLogger](source: Source[S, E])(implicit sync: Sync[F]): F[Either[SourceError, SourceResult[S, E]]] =  {
     val logsRef = for {
       logs <- Ref[F, SourceResult[S, E]](SourceResult(Nil))
     } yield new ApplySourceLog[F](logs)
@@ -49,7 +49,7 @@ class Repository[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]) {
         idOrError <- catchSourceError(saveWithLogs[F](source))
         result <- logs.ref.get
         _ <- SourceLogger[F].logResult(result)(aggregate, format)
-      } yield idOrError
+      } yield idOrError.map(_ => result)
     }
   }
 
