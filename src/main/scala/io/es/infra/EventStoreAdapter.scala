@@ -8,10 +8,10 @@ import io.es.algebra._
 import cats.implicits._
 import cats.mtl.{FunctorTell, MonadState}
 import fs2.async.Ref
-import io.es.infra.Repository._
+import io.es.infra.EventStoreAdapter._
 import io.es.infra.data.{Aggregate, EventFormat, RawEvent}
 
-class Repository[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]) {
+class EventStoreAdapter[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]) {
 
   private class AggregateState[F[_]](ref: Ref[F, S])(implicit sync: Sync[F]) extends MonadState[F, S] {
     override val monad: Monad[F] = sync
@@ -25,7 +25,7 @@ class Repository[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]) {
     override def modify(f: S => S): F[Unit] = ref.modify(f) *> sync.unit
   }
 
-  private class ApplySourceLog[F[_]](val ref: Ref[F, SourceResult[S, E]])(implicit sync: Sync[F]) extends FunctorTell[F, SourceLog[S, E]] {
+  private class ApplySourceLog[F[_]](val ref: Ref[F, SourceHistory[S, E]])(implicit sync: Sync[F], journal: Journal[F]) extends FunctorTell[F, SourceLog[S, E]] {
     override val functor: Functor[F] = sync
 
     override def tell(l: SourceLog[S, E]): F[Unit] = {
@@ -39,21 +39,20 @@ class Repository[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]) {
     override def tuple[A](ta: (SourceLog[S, E], A)): F[A] = tell(ta._1) *> sync.pure(ta._2)
   }
 
-  def save[F[_]: Journal: SourceLogger](source: Source[S, E])(implicit sync: Sync[F]): F[Either[SourceError, SourceResult[S, E]]] =  {
+  def save[F[_]](source: Source[S, E])(implicit sync: Sync[F], journal: Journal[F]): F[SourceResult[S, E]] =  {
     val logsRef = for {
-      logs <- Ref[F, SourceResult[S, E]](SourceResult(Nil))
+      logs <- Ref[F, SourceHistory[S, E]](SourceHistory())
     } yield new ApplySourceLog[F](logs)
 
     logsRef.flatMap { implicit logs =>
       for {
         idOrError <- catchSourceError(saveWithLogs[F](source))
         result <- logs.ref.get
-        _ <- SourceLogger[F].logResult(result)(aggregate, format)
       } yield idOrError.map(_ => result)
     }
   }
 
-  private def saveWithLogs[F[_]: Journal: SourceLogger](source: Source[S, E])(implicit sync: Sync[F], W: FunctorTell[F, SourceLog[S, E]]): F[UUID] =  {
+  private def saveWithLogs[F[_]](source: Source[S, E])(implicit sync: Sync[F], journal: Journal[F] , W: FunctorTell[F, SourceLog[S, E]]): F[UUID] =  {
     source match {
       case Source(NewSource(firstEventResult), PartialSource(list)) =>
 
@@ -161,19 +160,19 @@ class Repository[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]) {
   }
 }
 
-object Repository {
+object EventStoreAdapter {
 
   sealed trait SourceLog[S, E]
-  case class SuccessHydrateSourceLog[S, E](state: S) extends SourceLog[S, E]
-  case class SuccessCreateSourceLog[S, E](state: S, event: E) extends SourceLog[S, E]
-  case class SuccessUpdateSourceLog[S, E](state: S, event: E) extends SourceLog[S, E]
-  case class ErrorCreateSourceLog[S, E](error: String) extends SourceLog[S, E]
-  case class ErrorUpdateSourceLog[S, E](state: S, error: String) extends SourceLog[S, E]
+  case class SuccessHydrateSourceLog[S, E](state: S)                       extends SourceLog[S, E]
+  case class SuccessCreateSourceLog[S, E](state: S, event: E)              extends SourceLog[S, E]
+  case class SuccessUpdateSourceLog[S, E](state: S, event: E)              extends SourceLog[S, E]
+  case class ErrorCreateSourceLog[S, E](error: String)                     extends SourceLog[S, E]
+  case class ErrorUpdateSourceLog[S, E](state: S, error: String)           extends SourceLog[S, E]
   case class ErrorUncaughtEventSourceLog[S, E](state: Option[S], event: E) extends SourceLog[S, E]
 
-  case class SourceResult[S, E](logs: List[SourceLog[S, E]])
+  case class SourceHistory[S, E](logs: List[SourceLog[S, E]] = Nil) extends AnyVal
 
-  def newSourceResult[S, E](log: SourceLog[S, E]): SourceResult[S, E] = {
-    SourceResult(log :: Nil)
-  }
+  sealed trait SourceResult[S, E]
+  case class SourceSuccess[S, E](id: UUID, logs: SourceHistory[S, E])               extends SourceResult[S, E]
+  case class SourceError[S, E](error: SourceError[S, E], logs: SourceHistory[S, E]) extends SourceResult[S, E]
 }
