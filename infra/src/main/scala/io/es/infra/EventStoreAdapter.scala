@@ -30,9 +30,8 @@ class EventStoreAdapter[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]
       extends FunctorTell[F, SourceLog[S, E]] {
     override val functor: Functor[F] = sync
 
-    override def tell(l: SourceLog[S, E]): F[Unit] = {
+    override def tell(l: SourceLog[S, E]): F[Unit] =
       ref.modify(result => result.copy(logs = l :: result.logs)) *> sync.unit
-    }
 
     override def writer[A](a: A, l: SourceLog[S, E]): F[A] =
       tell(l) *> sync.pure(a)
@@ -160,7 +159,7 @@ class EventStoreAdapter[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]
   private def runCreateSource[F[_]](toApply: Result[E])(
       implicit ME: MonadError[F, Throwable],
       W: FunctorTell[F, SourceLog[S, E]]
-    ): F[(S, E)] = {
+  ): F[(S, E)] = {
     toApply match {
       case Right(event) =>
         aggregate.handle(None)(event) match {
@@ -177,15 +176,13 @@ class EventStoreAdapter[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]
     }
   }
 
-  private def createLogRef[F[_]](implicit S: Sync[F]): F[ApplySourceLog[F]] = {
+  private def createLogRef[F[_]](implicit S: Sync[F]): F[ApplySourceLog[F]] =
     Ref[F, SourceHistory[S, E]](SourceHistory())
       .map(ref => new ApplySourceLog[F](ref))
-  }
 
-  private def createStateRef[F[_]](state: S)(implicit S: Sync[F]): F[AggregateState[F]] = {
+  private def createStateRef[F[_]](state: S)(implicit S: Sync[F]): F[AggregateState[F]] =
     Ref[F, S](state)
       .map(ref => new AggregateState[F](ref))
-  }
 }
 
 object EventStoreAdapter {
