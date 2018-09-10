@@ -1,4 +1,3 @@
-
 package io.es.infra
 
 import Source.{HydratedSource, NewSource}
@@ -14,7 +13,8 @@ import io.es.infra.data.{Aggregate, EventFormat, RawEvent}
 
 class EventStoreAdapter[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]) {
 
-  private class AggregateState[F[_]](ref: Ref[F, S])(implicit sync: Sync[F]) extends MonadState[F, S] {
+  private class AggregateState[F[_]](ref: Ref[F, S])(implicit sync: Sync[F])
+      extends MonadState[F, S] {
     override val monad: Monad[F] = sync
 
     override def get: F[S] = ref.get
@@ -26,46 +26,57 @@ class EventStoreAdapter[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]
     override def modify(f: S => S): F[Unit] = ref.modify(f) *> sync.unit
   }
 
-  private class ApplySourceLog[F[_]](val ref: Ref[F, SourceHistory[S, E]])(implicit sync: Sync[F]) extends FunctorTell[F, SourceLog[S, E]] {
+  private class ApplySourceLog[F[_]](val ref: Ref[F, SourceHistory[S, E]])(implicit sync: Sync[F])
+      extends FunctorTell[F, SourceLog[S, E]] {
     override val functor: Functor[F] = sync
 
     override def tell(l: SourceLog[S, E]): F[Unit] = {
-      ref.modify(result =>
-        result.copy(logs = l :: result.logs)
-      ) *> sync.unit
+      ref.modify(result => result.copy(logs = l :: result.logs)) *> sync.unit
     }
 
-    override def writer[A](a: A, l: SourceLog[S, E]): F[A] = tell(l) *> sync.pure(a)
+    override def writer[A](a: A, l: SourceLog[S, E]): F[A] =
+      tell(l) *> sync.pure(a)
 
-    override def tuple[A](ta: (SourceLog[S, E], A)): F[A] = tell(ta._1) *> sync.pure(ta._2)
+    override def tuple[A](ta: (SourceLog[S, E], A)): F[A] =
+      tell(ta._1) *> sync.pure(ta._2)
 
     def history: F[SourceHistory[S, E]] = ref.get
   }
 
-  def save[F[_]](source: Source[S, E])(implicit sync: Sync[F], journal: Journal[F]): F[SourceResult[S, E]] =  {
+  def save[F[_]](source: Source[S, E])(
+      implicit sync: Sync[F],
+      journal: Journal[F]
+  ): F[SourceResult[S, E]] = {
     createLogRef[F].flatMap { implicit logs =>
       for {
         errorOrId <- catchSourceError(saveWithLogs[F](source))
-        history <- logs.history
-      } yield errorOrId.fold(
-        error => SourceFail(error, history),
-        id    => SourceSuccess(id, history)
-      )
+        history   <- logs.history
+      } yield
+        errorOrId.fold(
+          error => SourceFail(error, history),
+          id => SourceSuccess(id, history)
+        )
     }
   }
 
-  private def saveWithLogs[F[_]](source: Source[S, E])(implicit sync: Sync[F], journal: Journal[F], W: FunctorTell[F, SourceLog[S, E]]): F[UUID] =  {
+  private def saveWithLogs[F[_]](source: Source[S, E])(
+      implicit sync: Sync[F],
+      journal: Journal[F],
+      W: FunctorTell[F, SourceLog[S, E]]
+  ): F[UUID] = {
     source match {
       case Source(NewSource(firstEventResult), PartialSource(list)) =>
-
-        runCreateSource[F](firstEventResult).flatMap { case (aggr, firstEvent) =>
-          createStateRef[F](aggr).flatMap { implicit state =>
-            for {
-              events <- list.traverse[F, E](runSource[F]).map(list => firstEvent :: list)
-              rawEvents = events.map(e => RawEvent(format.encode(e)))
-              uuid <- Journal[F].create(aggregate.id(aggr), aggregate.tag)(rawEvents)
-            } yield uuid
-          }
+        runCreateSource[F](firstEventResult).flatMap {
+          case (aggr, firstEvent) =>
+            createStateRef[F](aggr).flatMap { implicit state =>
+              for {
+                events <- list
+                  .traverse[F, E](runSource[F])
+                  .map(list => firstEvent :: list)
+                rawEvents = events.map(e => RawEvent(format.encode(e)))
+                uuid <- Journal[F].create(aggregate.id(aggr), aggregate.tag)(rawEvents)
+              } yield uuid
+            }
         }
 
       case Source(HydratedSource(id), PartialSource(list)) =>
@@ -80,39 +91,52 @@ class EventStoreAdapter[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]
     }
   }
 
-  private def catchSourceError[F[_]](effect: F[UUID])(implicit sync: Sync[F]): F[Either[SourceError, UUID]] = {
+  private def catchSourceError[F[_]](effect: F[UUID])(
+      implicit sync: Sync[F]
+  ): F[Either[SourceError, UUID]] = {
     effect.attempt.flatMap {
-      case Right(id) => sync.pure(Right(id))
+      case Right(id)                    => sync.pure(Right(id))
       case Left(sourceErr: SourceError) => sync.pure(Left(sourceErr))
-      case Left(otherErr) => sync.raiseError(otherErr)
+      case Left(otherErr)               => sync.raiseError(otherErr)
     }
   }
 
-  private def evalStream[F[_]](id: UUID, stream: fs2.Stream[F, RawEvent])(implicit sync: Sync[F], W: FunctorTell[F, SourceLog[S, E]]): F[S] = {
+  private def evalStream[F[_]](id: UUID, stream: fs2.Stream[F, RawEvent])(
+      implicit sync: Sync[F],
+      W: FunctorTell[F, SourceLog[S, E]]
+  ): F[S] = {
     stream
       .evalMap(decodeEvent[F])
-      .evalScan(Option.empty[S]) { case (s, e) =>
-        aggregate.handle(s)(e) match {
-          case Some(aggr) => sync.pure(Some(aggr))
-          case None => sync.raiseError(HydrateUncaughtEventError(s.map(_.toString), e.toString))
-        }
+      .evalScan(Option.empty[S]) {
+        case (s, e) =>
+          aggregate.handle(s)(e) match {
+            case Some(aggr) => sync.pure(Some(aggr))
+            case None =>
+              sync.raiseError(HydrateUncaughtEventError(s.map(_.toString), e.toString))
+          }
       }
-      .compile.last.map(_.flatten)
+      .compile
+      .last
+      .map(_.flatten)
       .flatMap {
         case Some(s) => W.tell(SuccessHydrateSourceLog(s)) *> sync.pure(s)
-        case None => sync.raiseError[S](HydrateNoAggregateFound(id))
+        case None    => sync.raiseError[S](HydrateNoAggregateFound(id))
       }
   }
 
   private def decodeEvent[F[_]](rawEvent: RawEvent)(implicit ME: MonadError[F, Throwable]): F[E] = {
     format.decode(rawEvent) match {
       case Right(e) => ME.pure(e)
-      case Left(err) => ME.raiseError(HydrateDecodeEventError(rawEvent.payload, err))
+      case Left(err) =>
+        ME.raiseError(HydrateDecodeEventError(rawEvent.payload, err))
     }
   }
 
-  private def runSource[F[_]](toApply: S => Result[E])
-                             (implicit MS: MonadState[F, S], ME: MonadError[F, Throwable], W: FunctorTell[F, SourceLog[S, E]]): F[E] = {
+  private def runSource[F[_]](toApply: S => Result[E])(
+      implicit MS: MonadState[F, S],
+      ME: MonadError[F, Throwable],
+      W: FunctorTell[F, SourceLog[S, E]]
+  ): F[E] = {
     for {
       state <- MS.get
       event <- toApply(state) match {
@@ -133,7 +157,10 @@ class EventStoreAdapter[S, E](aggregate: Aggregate[S, E], format: EventFormat[E]
     } yield event
   }
 
-  private def runCreateSource[F[_]](toApply: Result[E])(implicit ME: MonadError[F, Throwable], W: FunctorTell[F, SourceLog[S, E]]): F[(S, E)] = {
+  private def runCreateSource[F[_]](toApply: Result[E])(
+      implicit ME: MonadError[F, Throwable],
+      W: FunctorTell[F, SourceLog[S, E]]
+    ): F[(S, E)] = {
     toApply match {
       case Right(event) =>
         aggregate.handle(None)(event) match {
@@ -174,6 +201,7 @@ object EventStoreAdapter {
   case class SourceHistory[S, E](logs: List[SourceLog[S, E]] = Nil) extends AnyVal
 
   sealed trait SourceResult[S, E]
-  case class SourceSuccess[S, E](id: UUID, logs: SourceHistory[S, E])               extends SourceResult[S, E]
-  case class SourceFail[S, E](error: SourceError, logs: SourceHistory[S, E])        extends SourceResult[S, E]
+  case class SourceSuccess[S, E](id: UUID, logs: SourceHistory[S, E]) extends SourceResult[S, E]
+  case class SourceFail[S, E](error: SourceError, logs: SourceHistory[S, E])
+      extends SourceResult[S, E]
 }
