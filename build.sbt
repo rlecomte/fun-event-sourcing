@@ -1,16 +1,30 @@
 import Dependencies._
 
-lazy val root = (project in file(".")).
-  settings(
-    inThisBuild(List(
-      organization := "com.example",
-      scalaVersion := "2.12.4",
-      version      := "0.1.0-SNAPSHOT"
-    )),
-    name := "Functional Event Sourcing",
+
+lazy val commonSettings = Seq(
+  name := "Functional Event Sourcing",
+  organization := "io.es",
+  version := "0.1.0-SNAPSHOT",
+  scalaVersion := "2.12.6",
+  addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.6")
+)
+
+lazy val root = (project in file("."))
+  .settings(inThisBuild(commonSettings))
+  .aggregate(infra, testkit, `domain-example`)
+
+lazy val infra = (project in file("infra"))
+  .settings(
+    inThisBuild(commonSettings),
     libraryDependencies += scalaTest % Test,
     libraryDependencies += fs2,
     libraryDependencies ++= circe,
-    libraryDependencies += "org.typelevel" %% "cats-mtl-core" % "0.2.1",
-    addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.6")
+    libraryDependencies += catsMtl
   )
+
+lazy val testkit = (project in file("testkit"))
+
+lazy val `domain-example` = (project in file("domain-example"))
+  .settings(inThisBuild(commonSettings))
+  .dependsOn(infra)
+  .dependsOn(testkit)
